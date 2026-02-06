@@ -4,7 +4,7 @@ Build a Zhejiang+Yale-only CSRankings dataset.
 
 This script:
 1. Keeps only faculty rows affiliated with Zhejiang University or Yale University.
-2. Ensures Yilun Zhao 0001 (Zhejiang) exists in the dataset.
+2. Ensures Yilun Zhao 0001 exists in both Zhejiang and Yale.
 3. Rewrites csrankings-*.csv shards, csrankings.csv, and split helper CSVs.
 4. Filters institutions.csv to only required institutions.
 5. Optionally trims dblp-aliases.csv to rows relevant to kept faculty.
@@ -22,13 +22,22 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 
 TARGET_INSTITUTIONS = {"Zhejiang University", "Yale University"}
 
-YILUN_ENTRY = {
-    "name": "Yilun Zhao 0001",
-    "affiliation": "Zhejiang University",
-    "homepage": "https://yilunzhao.com",
-    "scholarid": "NOSCHOLARPAGE",
-    "orcid": "0000-0000-0000-0000",
-}
+YILUN_ENTRIES = [
+    {
+        "name": "Yilun Zhao 0001",
+        "affiliation": "Yale University",
+        "homepage": "https://yilunzhao.com",
+        "scholarid": "NOSCHOLARPAGE",
+        "orcid": "0000-0000-0000-0000",
+    },
+    {
+        "name": "Yilun Zhao 0001",
+        "affiliation": "Zhejiang University",
+        "homepage": "https://yilunzhao.com",
+        "scholarid": "NOSCHOLARPAGE",
+        "orcid": "0000-0000-0000-0000",
+    },
+]
 
 
 def read_csv_rows(path: Path) -> Tuple[List[str], List[Dict[str, str]]]:
@@ -82,24 +91,21 @@ def is_yilun_variant(name: str) -> bool:
 def filter_and_rebuild_subset(filter_aliases: bool) -> None:
     fieldnames, source_rows = read_csv_rows(Path("csrankings.csv"))
     all_rows: List[Dict[str, str]] = []
+    allowed_yilun_pairs = {(entry["name"], entry["affiliation"]) for entry in YILUN_ENTRIES}
     for row in source_rows:
         if row.get("affiliation", "") in TARGET_INSTITUTIONS:
             # Keep only the explicitly selected Yilun identity, including affiliation.
             if is_yilun_variant(row.get("name", "")):
-                if (
-                    row.get("name", "") != YILUN_ENTRY["name"]
-                    or row.get("affiliation", "") != YILUN_ENTRY["affiliation"]
-                ):
+                if (row.get("name", ""), row.get("affiliation", "")) not in allowed_yilun_pairs:
                     continue
             all_rows.append(normalize_row(row, fieldnames))
 
-    yilun_name = YILUN_ENTRY["name"]
-    yilun_present = any(
-        row.get("name") == yilun_name and row.get("affiliation") == YILUN_ENTRY["affiliation"]
-        for row in all_rows
-    )
-    if not yilun_present:
-        all_rows.append(normalize_row(YILUN_ENTRY, fieldnames))
+    yilun_name = YILUN_ENTRIES[0]["name"]
+    existing_yilun_pairs = {(row.get("name", ""), row.get("affiliation", "")) for row in all_rows}
+    for entry in YILUN_ENTRIES:
+        pair = (entry["name"], entry["affiliation"])
+        if pair not in existing_yilun_pairs:
+            all_rows.append(normalize_row(entry, fieldnames))
 
     all_rows = dedupe_rows(all_rows, fieldnames)
     all_rows.sort(

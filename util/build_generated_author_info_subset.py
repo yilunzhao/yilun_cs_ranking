@@ -17,7 +17,7 @@ from typing import Dict, List, Tuple
 
 TARGET_INSTITUTIONS = {"Yale University", "Zhejiang University"}
 YILUN_NAME = "Yilun Zhao 0001"
-YILUN_DEPT = "Zhejiang University"
+YILUN_DEPTS = ["Yale University", "Zhejiang University"]
 
 
 def is_yilun_variant(name: str) -> bool:
@@ -55,17 +55,18 @@ def build_yilun_rows(yilun_payload_path: Path) -> List[Dict[str, str]]:
         totals[(area, year)]["adjusted"] += 1.0 / float(rec.get("numauthors", 1))
 
     rows: List[Dict[str, str]] = []
-    for (area, year), values in sorted(totals.items()):
-        rows.append(
-            {
-                "name": YILUN_NAME,
-                "dept": YILUN_DEPT,
-                "area": area,
-                "count": f"{values['count']:.1f}",
-                "adjustedcount": f"{values['adjusted']:.5f}",
-                "year": str(year),
-            }
-        )
+    for dept in YILUN_DEPTS:
+        for (area, year), values in sorted(totals.items()):
+            rows.append(
+                {
+                    "name": YILUN_NAME,
+                    "dept": dept,
+                    "area": area,
+                    "count": f"{values['count']:.1f}",
+                    "adjustedcount": f"{values['adjusted']:.5f}",
+                    "year": str(year),
+                }
+            )
     return rows
 
 

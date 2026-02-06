@@ -13,6 +13,7 @@
 ## Data Updates
 
 - [x] Added Yilun from DBLP profile `https://dblp.org/pid/271/8391-1.html` as:
+  - `Yilun Zhao 0001,Yale University,https://yilunzhao.com,NOSCHOLARPAGE,0000-0000-0000-0000`
   - `Yilun Zhao 0001,Zhejiang University,https://yilunzhao.com,NOSCHOLARPAGE,0000-0000-0000-0000`
   - Explicit exclusion: `Yilun Zhao 0002` is not counted.
 - [x] Ensured Yilun counted-paper rows are generated from DBLP with CSRankings counting rules (`countPaper`) via:

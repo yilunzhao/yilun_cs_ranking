@@ -16,7 +16,7 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 
 TARGET_INSTITUTIONS = {"Zhejiang University", "Yale University"}
 YILUN_NAME = "Yilun Zhao 0001"
-YILUN_AFFILIATION = "Zhejiang University"
+YILUN_AFFILIATIONS = {"Yale University", "Zhejiang University"}
 DISPLAY_START_YEAR = 2022
 DISPLAY_END_YEAR = 2026
 
@@ -65,10 +65,14 @@ def main() -> None:
     )
     if disallowed_yilun:
         fail(f"Found disallowed Yilun entries in csrankings.csv: {disallowed_yilun}")
-    if not any(
-        r.get("name") == YILUN_NAME and r.get("affiliation") == YILUN_AFFILIATION for r in cs_rows
-    ):
-        fail(f"{YILUN_NAME} missing from csrankings.csv")
+    yilun_affiliations_in_csv = {
+        r.get("affiliation", "") for r in cs_rows if r.get("name") == YILUN_NAME
+    }
+    if yilun_affiliations_in_csv != YILUN_AFFILIATIONS:
+        fail(
+            f"{YILUN_NAME} affiliations mismatch in csrankings.csv: "
+            f"expected {sorted(YILUN_AFFILIATIONS)}, found {sorted(yilun_affiliations_in_csv)}"
+        )
 
     _, inst_rows = read_csv(Path("institutions.csv"))
     inst_names = {r.get("institution", "") for r in inst_rows}
@@ -85,6 +89,12 @@ def main() -> None:
     yilun_rows = [r for r in author_rows if r.get("name") == YILUN_NAME]
     if not yilun_rows:
         fail(f"{YILUN_NAME} has no rows in generated-author-info.csv")
+    yilun_depts = {r.get("dept", "") for r in yilun_rows}
+    if yilun_depts != YILUN_AFFILIATIONS:
+        fail(
+            f"{YILUN_NAME} dept mismatch in generated-author-info.csv: "
+            f"expected {sorted(YILUN_AFFILIATIONS)}, found {sorted(yilun_depts)}"
+        )
 
     # Verify shard files only contain target institutions.
     for ch in string.ascii_lowercase:
@@ -117,15 +127,20 @@ def main() -> None:
             key = (rec.get("area", ""), int(rec.get("year")))
             counted[key] = counted.get(key, 0) + 1
 
-    info_counts: Dict[Tuple[str, int], int] = {}
-    for row in yilun_rows:
-        key = (row.get("area", ""), int(row.get("year", "0")))
-        info_counts[key] = int(float(row.get("count", "0")))
-
-    if counted != info_counts:
-        missing = sorted(set(info_counts) - set(counted))[:5]
-        extra = sorted(set(counted) - set(info_counts))[:5]
-        fail(f"yilun-papers.json count mismatch vs generated-author-info.csv (missing={missing}, extra={extra})")
+    for dept in YILUN_AFFILIATIONS:
+        info_counts: Dict[Tuple[str, int], int] = {}
+        for row in yilun_rows:
+            if row.get("dept") != dept:
+                continue
+            key = (row.get("area", ""), int(row.get("year", "0")))
+            info_counts[key] = int(float(row.get("count", "0")))
+        if counted != info_counts:
+            missing = sorted(set(info_counts) - set(counted))[:5]
+            extra = sorted(set(counted) - set(info_counts))[:5]
+            fail(
+                f"yilun-papers.json count mismatch vs generated-author-info.csv for {dept} "
+                f"(missing={missing}, extra={extra})"
+            )
 
     displayed = [
         rec
