@@ -15,7 +15,7 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 
 
 TARGET_INSTITUTIONS = {"Zhejiang University", "Yale University"}
-YILUN_NAME = "Yilun Zhao 0007"
+YILUN_NAME = "Yilun Zhao 0001"
 DISPLAY_START_YEAR = 2022
 DISPLAY_END_YEAR = 2026
 
@@ -44,6 +44,10 @@ def tuple_key(row: Dict[str, str], fields: Sequence[str]) -> Tuple[str, ...]:
     return tuple(row.get(field, "") for field in fields)
 
 
+def is_yilun_variant(name: str) -> bool:
+    return name.strip().startswith("Yilun Zhao")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Verify Zhejiang+Yale subset data.")
     parser.add_argument("--baseline-csrankings", help="Optional baseline csrankings.csv for parity checks.")
@@ -55,6 +59,11 @@ def main() -> None:
 
     _, cs_rows = read_csv(Path("csrankings.csv"))
     check_affiliations(cs_rows, "affiliation", "csrankings.csv")
+    disallowed_yilun = sorted(
+        {r.get("name", "") for r in cs_rows if is_yilun_variant(r.get("name", "")) and r.get("name") != YILUN_NAME}
+    )
+    if disallowed_yilun:
+        fail(f"Found disallowed Yilun entries in csrankings.csv: {disallowed_yilun}")
     if not any(r.get("name") == YILUN_NAME and r.get("affiliation") == "Yale University" for r in cs_rows):
         fail(f"{YILUN_NAME} missing from csrankings.csv")
 
@@ -65,6 +74,11 @@ def main() -> None:
 
     _, author_rows = read_csv(Path("generated-author-info.csv"))
     check_affiliations(author_rows, "dept", "generated-author-info.csv")
+    disallowed_yilun_author_rows = sorted(
+        {r.get("name", "") for r in author_rows if is_yilun_variant(r.get("name", "")) and r.get("name") != YILUN_NAME}
+    )
+    if disallowed_yilun_author_rows:
+        fail(f"Found disallowed Yilun rows in generated-author-info.csv: {disallowed_yilun_author_rows}")
     yilun_rows = [r for r in author_rows if r.get("name") == YILUN_NAME]
     if not yilun_rows:
         fail(f"{YILUN_NAME} has no rows in generated-author-info.csv")
@@ -87,6 +101,11 @@ def main() -> None:
 
     if payload.get("canonical_name") != YILUN_NAME:
         fail("yilun-papers.json canonical_name mismatch")
+    disallowed_matched_names = sorted(
+        {rec.get("matched_author", "") for rec in records if rec.get("matched_author", "") != YILUN_NAME}
+    )
+    if disallowed_matched_names:
+        fail(f"Found disallowed Yilun matched_author variants in yilun-papers.json: {disallowed_matched_names}")
 
     # Cross-check counted paper totals by area/year against generated-author-info.csv for Yilun.
     counted: Dict[Tuple[str, int], int] = {}
@@ -120,10 +139,10 @@ def main() -> None:
         baseline_filtered = [
             r
             for r in baseline_rows
-            if r.get("affiliation") in TARGET_INSTITUTIONS and r.get("name") != YILUN_NAME
+            if r.get("affiliation") in TARGET_INSTITUTIONS and not is_yilun_variant(r.get("name", ""))
         ]
         _, current_rows = read_csv(Path("csrankings.csv"))
-        current_filtered = [r for r in current_rows if r.get("name") != YILUN_NAME]
+        current_filtered = [r for r in current_rows if not is_yilun_variant(r.get("name", ""))]
         if {tuple_key(r, fields) for r in baseline_filtered} != {tuple_key(r, fields) for r in current_filtered}:
             fail("csrankings.csv rows for existing Yale/Zhejiang faculty changed unexpectedly vs baseline")
 
@@ -132,10 +151,10 @@ def main() -> None:
         baseline_filtered = [
             r
             for r in baseline_rows
-            if r.get("dept") in TARGET_INSTITUTIONS and r.get("name") != YILUN_NAME
+            if r.get("dept") in TARGET_INSTITUTIONS and not is_yilun_variant(r.get("name", ""))
         ]
         _, current_rows = read_csv(Path("generated-author-info.csv"))
-        current_filtered = [r for r in current_rows if r.get("name") != YILUN_NAME]
+        current_filtered = [r for r in current_rows if not is_yilun_variant(r.get("name", ""))]
         if {tuple_key(r, fields) for r in baseline_filtered} != {tuple_key(r, fields) for r in current_filtered}:
             fail("generated-author-info.csv rows changed unexpectedly for existing Yale/Zhejiang faculty")
 

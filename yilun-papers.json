@@ -1,8 +1,7 @@
 {
-  "canonical_name": "Yilun Zhao 0007",
+  "canonical_name": "Yilun Zhao 0001",
   "matched_names": [
-    "Yilun Zhao",
-    "Yilun Zhao 0007"
+    "Yilun Zhao 0001"
   ],
   "display_start_year": 2022,
   "display_end_year": 2026,
@@ -152,31 +151,6 @@
       "author_index": 0,
       "is_first_author": true,
       "is_second_author": false,
-      "is_last_author": false,
-      "included_by_csrankings": true,
-      "included_in_displayed_metrics": true,
-      "exclusion_reason": ""
-    },
-    {
-      "title": "CLASS: A Controller-Centric Layout Synthesizer for Dynamic Quantum Circuits.",
-      "year": 2025,
-      "venue": "ICCAD",
-      "area": "iccad",
-      "url": "db/conf/iccad/iccad2025.html#ChenZLLWHW25",
-      "authors": [
-        "Yu Chen",
-        "Yilun Zhao 0002",
-        "Bing Li 0017",
-        "He Li",
-        "Mengdi Wang 0004",
-        "Yinhe Han 0001",
-        "Ying Wang 0001"
-      ],
-      "numauthors": 7,
-      "matched_author": "Yilun Zhao 0002",
-      "author_index": 1,
-      "is_first_author": false,
-      "is_second_author": true,
       "is_last_author": false,
       "included_by_csrankings": true,
       "included_in_displayed_metrics": true,
@@ -647,32 +621,6 @@
       "exclusion_reason": ""
     },
     {
-      "title": "Full State Quantum Circuit Simulation Beyond Memory Limit.",
-      "year": 2023,
-      "venue": "ICCAD",
-      "area": "iccad",
-      "url": "db/conf/iccad/iccad2023.html#ZhaoCLWCWLH23",
-      "authors": [
-        "Yilun Zhao 0002",
-        "Yu Chen",
-        "He Li",
-        "Ying Wang 0001",
-        "Kaiyan Chang",
-        "Bingmeng Wang",
-        "Bing Li 0017",
-        "Yinhe Han 0001"
-      ],
-      "numauthors": 8,
-      "matched_author": "Yilun Zhao 0002",
-      "author_index": 0,
-      "is_first_author": true,
-      "is_second_author": false,
-      "is_last_author": false,
-      "included_by_csrankings": true,
-      "included_in_displayed_metrics": true,
-      "exclusion_reason": ""
-    },
-    {
       "title": "MultiHiertt: Numerical Reasoning over Multi Hierarchical Tabular and Textual Data.",
       "year": 2022,
       "venue": "ACL (1)",
@@ -741,34 +689,9 @@
       "included_by_csrankings": true,
       "included_in_displayed_metrics": true,
       "exclusion_reason": ""
-    },
-    {
-      "title": "Q-GPU: A Recipe of Optimizations for Quantum Circuit Simulation Using GPUs.",
-      "year": 2022,
-      "venue": "HPCA",
-      "area": "hpca",
-      "url": "db/conf/hpca/hpca2022.html#ZhaoGYDMUZJYT22",
-      "authors": [
-        "Yilun Zhao 0002",
-        "Yanan Guo 0002",
-        "Yuan Yao",
-        "Amanda Dumi",
-        "Devin M. Mulvey",
-        "Shiv Upadhyay",
-        "Youtao Zhang",
-        "Kenneth D. Jordan",
-        "Jun Yang 0002",
-        "Xulong Tang"
-      ],
-      "numauthors": 10,
-      "matched_author": "Yilun Zhao 0002",
-      "author_index": 0,
-      "is_first_author": true,
-      "is_second_author": false,
-      "is_last_author": false,
-      "included_by_csrankings": true,
-      "included_in_displayed_metrics": true,
-      "exclusion_reason": ""
     }
+  ],
+  "excluded_names": [
+    "Yilun Zhao 0002"
   ]
 }

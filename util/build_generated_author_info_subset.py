@@ -3,7 +3,7 @@
 Build subset generated-author-info.csv for Yale+Zhejiang and inject Yilun rows.
 
 This script preserves all existing Yale/Zhejiang rows from generated-author-info.csv
-and adds/refreshes Yilun Zhao 0007 rows from yilun-papers.json.
+and adds/refreshes Yilun Zhao 0001 rows from yilun-papers.json.
 """
 
 from __future__ import annotations
@@ -16,8 +16,12 @@ from typing import Dict, List, Tuple
 
 
 TARGET_INSTITUTIONS = {"Yale University", "Zhejiang University"}
-YILUN_NAME = "Yilun Zhao 0007"
+YILUN_NAME = "Yilun Zhao 0001"
 YILUN_DEPT = "Yale University"
+
+
+def is_yilun_variant(name: str) -> bool:
+    return name.strip().startswith("Yilun Zhao")
 
 
 def read_csv(path: Path) -> Tuple[List[str], List[Dict[str, str]]]:
@@ -67,7 +71,11 @@ def build_yilun_rows(yilun_payload_path: Path) -> List[Dict[str, str]]:
 
 def main() -> None:
     fieldnames, rows = read_csv(Path("generated-author-info.csv"))
-    filtered = [r for r in rows if r.get("dept") in TARGET_INSTITUTIONS and r.get("name") != YILUN_NAME]
+    filtered = [
+        r
+        for r in rows
+        if r.get("dept") in TARGET_INSTITUTIONS and not is_yilun_variant(r.get("name", ""))
+    ]
     yilun_rows = build_yilun_rows(Path("yilun-papers.json"))
     merged = filtered + yilun_rows
     merged.sort(key=lambda r: (r["name"].lower(), r["area"], int(r["year"])))

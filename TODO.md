@@ -13,7 +13,8 @@
 ## Data Updates
 
 - [x] Added Yilun from DBLP profile `https://dblp.org/pid/271/8391-1.html` as:
-  - `Yilun Zhao 0007,Yale University,https://yilunzhao.com,NOSCHOLARPAGE,0000-0000-0000-0000`
+  - `Yilun Zhao 0001,Yale University,https://yilunzhao.com,NOSCHOLARPAGE,0000-0000-0000-0000`
+  - Explicit exclusion: `Yilun Zhao 0002` is not counted.
 - [x] Ensured Yilun counted-paper rows are generated from DBLP with CSRankings counting rules (`countPaper`) via:
   - `util/generate_yilun_papers.py`
   - `util/build_generated_author_info_subset.py`
@@ -48,7 +49,7 @@
   - Passed.
   - `csrankings.csv`: 207 rows (`Yale 57`, `Zhejiang 150`)
   - `generated-author-info.csv`: 4335 rows (`Yale 1014`, `Zhejiang 3321`)
-  - `Yilun Zhao 0007`: 15 counted area/year rows
+  - `Yilun Zhao 0001`: 12 counted area/year rows
   - `yilun-papers.json`: 29 counted records
 
 ## Manual Finalization Required

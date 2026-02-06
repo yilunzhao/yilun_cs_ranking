@@ -8,7 +8,6 @@ from __future__ import annotations
 import argparse
 import json
 import lzma
-import re
 from typing import Dict, List, Optional, Tuple
 
 USING_LXML = True
@@ -37,12 +36,6 @@ from csrankings import (
 
 def get_element_text(elem) -> str:
     return "".join(elem.itertext()).strip() if elem is not None else ""
-
-
-def normalize_author_name(name: str) -> str:
-    compact = re.sub(r"\s+", " ", name.strip())
-    compact = re.sub(r"\s+\d{4}$", "", compact)
-    return compact.lower()
 
 
 def map_area_and_conf(
@@ -97,8 +90,19 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate Yilun paper details JSON.")
     parser.add_argument("--dblp", default="dblp.xml.xz", help="Path to filtered DBLP xz file.")
     parser.add_argument("--output", default="yilun-papers.json", help="Output JSON path.")
-    parser.add_argument("--canonical-name", default="Yilun Zhao 0007")
-    parser.add_argument("--alias-name", default="Yilun Zhao")
+    parser.add_argument("--canonical-name", default="Yilun Zhao 0001")
+    parser.add_argument(
+        "--include-name",
+        action="append",
+        default=[],
+        help="Additional exact DBLP author name variants to include (repeatable).",
+    )
+    parser.add_argument(
+        "--exclude-name",
+        action="append",
+        default=["Yilun Zhao 0002"],
+        help="Exact DBLP author name variants to exclude (repeatable).",
+    )
     parser.add_argument("--display-start-year", type=int, default=2022)
     parser.add_argument("--display-end-year", type=int, default=2026)
     return parser.parse_args()
@@ -106,8 +110,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    matched_names = {args.canonical_name, args.alias_name}
-    matched_normalized = {normalize_author_name(name) for name in matched_names}
+    matched_names = {args.canonical_name, *args.include_name}
+    excluded_names = set(args.exclude_name)
     records: List[Dict] = []
 
     with lzma.open(args.dblp, "rb") as xz:
@@ -136,7 +140,7 @@ def main() -> None:
 
             author_list = [get_element_text(a) for a in author_elems]
             match_indices = [
-                i for i, name in enumerate(author_list) if normalize_author_name(name) in matched_normalized
+                i for i, name in enumerate(author_list) if name in matched_names and name not in excluded_names
             ]
             if not match_indices:
                 elem.clear()
@@ -240,6 +244,7 @@ def main() -> None:
     payload = {
         "canonical_name": args.canonical_name,
         "matched_names": sorted(matched_names),
+        "excluded_names": sorted(excluded_names),
         "display_start_year": args.display_start_year,
         "display_end_year": args.display_end_year,
         "records": records,
