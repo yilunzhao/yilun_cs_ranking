@@ -1,6 +1,9 @@
 faculty-affiliations.csv
 articles.json
 dblp-original.xml.gz
+dblp.xml.xz
+prev-dblp.xml.gz
+name-changes.csv
 homepages.csv
 scholar.csv
 util/__pycache__/*

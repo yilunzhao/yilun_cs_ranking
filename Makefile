@@ -7,7 +7,7 @@
 
 TARGETS = csrankings.js csrankings.min.js submit/submit.js generated-author-info.csv
 
-.PHONY: home-pages scholar-links fix-affiliations update-dblp clean-dblp download-dblp shrink-dblp clean-csrankings update-author-names update-dblp-full apply-author-names backup-dblp update-dblp-date download-prev-dblp
+.PHONY: home-pages scholar-links fix-affiliations update-dblp clean-dblp download-dblp shrink-dblp clean-csrankings update-author-names update-dblp-full apply-author-names backup-dblp update-dblp-date download-prev-dblp build-yale-zju-subset verify-yale-zju-subset
 
 PYTHON = python3.12 # 3.7
 PYPY   = python3.12 # pypy
@@ -225,3 +225,12 @@ update-dblp-full:
 	@echo "=== DBLP UPDATE COMPLETE ==="
 	@echo "You may want to run 'make all' to rebuild everything."
 
+# Rebuild a minimal CSRankings deployment for Yale + Zhejiang only.
+build-yale-zju-subset:
+	$(PYTHON) util/build_yale_zju_subset.py
+	$(PYTHON) util/generate_yilun_papers.py
+	$(PYTHON) util/build_generated_author_info_subset.py
+
+# Verify subset integrity and Yilun paper-details consistency.
+verify-yale-zju-subset:
+	$(PYTHON) util/verify_yale_zju_subset.py

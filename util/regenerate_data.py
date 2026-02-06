@@ -15,6 +15,7 @@ import argparse
 import lzma
 import json
 import csv
+import re
 import sys
 from typing import Any, Dict, List, Optional, Tuple, TypedDict
 from collections import defaultdict, OrderedDict
@@ -25,11 +26,12 @@ try:
 except ImportError:
     HAS_ORJSON = False
 
+USING_LXML = True
 try:
     from lxml import etree
 except ImportError:
-    print("Error: lxml is required. Install with: pip install lxml", file=sys.stderr)
-    sys.exit(1)
+    import xml.etree.ElementTree as etree  # type: ignore
+    USING_LXML = False
 
 from csrankings import (
     Area,
@@ -103,20 +105,39 @@ authorscoresAdjusted: Dict[Tuple[str, str, int], float] = defaultdict(float)
 facultydict: Dict[str, str] = {}
 aliasdict: Dict[str, str] = {}
 reversealiasdict: Dict[str, str] = {}
+normalized_faculty_lookup: Dict[str, str] = {}
+
+
+def normalize_author_name(name: str) -> str:
+    """Normalize DBLP names for suffix-insensitive matching."""
+    compact = re.sub(r"\s+", " ", name.strip())
+    compact = re.sub(r"\s+\d{4}$", "", compact)
+    return compact.lower()
 
 
 def build_dicts() -> None:
     """Load faculty and alias dictionaries from CSV files."""
-    global facultydict, aliasdict, reversealiasdict
+    global facultydict, aliasdict, reversealiasdict, normalized_faculty_lookup
 
     facultydict = {}
     aliasdict = {}
     reversealiasdict = {}
+    normalized_faculty_lookup = {}
 
     with open("faculty-affiliations.csv") as f:
         rdr = csv.DictReader(f)
         for row in rdr:
             facultydict[row["name"]] = row["affiliation"]
+
+    # Build a suffix-insensitive lookup; keep only unique normalized names.
+    collisions: Dict[str, int] = defaultdict(int)
+    for name in facultydict:
+        key = normalize_author_name(name)
+        collisions[key] += 1
+        normalized_faculty_lookup[key] = name
+    normalized_faculty_lookup = {
+        key: normalized_faculty_lookup[key] for key, count in collisions.items() if count == 1
+    }
 
     with open("dblp-aliases.csv") as f:
         rdr = csv.DictReader(f)
@@ -159,6 +180,10 @@ def process_article(elem, conf_filter: str, include_all: bool) -> Optional[Dict]
                 break
             reverse = reversealiasdict.get(authorName)
             if reverse and reverse in facultydict:
+                foundOneInDict = True
+                break
+            normalized = normalize_author_name(authorName)
+            if normalized in normalized_faculty_lookup:
                 foundOneInDict = True
                 break
         if not foundOneInDict:
@@ -281,6 +306,9 @@ def process_authors(article_data: Dict, include_all: bool) -> None:
 
     for authorName in authorList:
         realName = aliasdict.get(authorName, authorName)
+        normalized = normalize_author_name(realName)
+        if realName not in facultydict and normalized in normalized_faculty_lookup:
+            realName = normalized_faculty_lookup[normalized]
 
         # Get affiliation
         affiliation = facultydict.get(realName, "")
@@ -328,7 +356,8 @@ def process_authors(article_data: Dict, include_all: bool) -> None:
 
 def do_it() -> None:
     """Process the DBLP XML file using lxml iterparse."""
-    print("Processing DBLP XML with lxml iterparse...", file=sys.stderr, flush=True)
+    parser_name = "lxml iterparse" if USING_LXML else "xml.etree iterparse (fallback)"
+    print(f"Processing DBLP XML with {parser_name}...", file=sys.stderr, flush=True)
 
     counter = 0
     conf_filter = args.conference
@@ -336,16 +365,24 @@ def do_it() -> None:
 
     # Use iterparse for memory-efficient streaming
     with lzma.open("dblp.xml.xz", 'rb') as xz:
-        context = etree.iterparse(
-            xz,
-            events=('end',),
-            tag=('inproceedings', 'article'),
-            load_dtd=True,
-            resolve_entities=True,
-            huge_tree=True,
-        )
+        if USING_LXML:
+            context = etree.iterparse(
+                xz,
+                events=('end',),
+                tag=('inproceedings', 'article'),
+                load_dtd=True,
+                resolve_entities=True,
+                huge_tree=True,
+            )
+        else:
+            context = etree.iterparse(
+                xz,
+                events=('end',),
+            )
 
         for event, elem in context:
+            if not USING_LXML and elem.tag not in ('inproceedings', 'article'):
+                continue
             counter += 1
             if counter % 10000 == 0:
                 print(f"{counter} papers processed.", file=sys.stderr)
@@ -356,8 +393,9 @@ def do_it() -> None:
 
             # Clear element to free memory
             elem.clear()
-            while elem.getprevious() is not None:
-                del elem.getparent()[0]
+            if USING_LXML:
+                while elem.getprevious() is not None:
+                    del elem.getparent()[0]
 
     print(f"{counter} papers processed (total).", file=sys.stderr)
 

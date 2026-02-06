@@ -187,7 +187,7 @@ namespace CSRankings {
                     deptDisplay += `&nbsp;<a href="${encodeURI(instHomepage)}" target="_blank" onclick="event.stopPropagation(); trackOutboundLink('${encodeURI(instHomepage)}', true);" title="Visit ${dept} CS department"><img alt="Homepage" src="${homepageImage}" style="opacity:0.7;"></a>`;
                 }
                 s += "&nbsp;" + deptDisplay
-                    + `&nbsp;<img  title="${country}" src="/flags/${abbrv}.png">&nbsp;`
+                    + `&nbsp;<img  title="${country}" src="./flags/${abbrv}.png">&nbsp;`
                     + `<span class="hovertip" onclick='csr.toggleChart("${esc}"); ga("send", "event", "chart", "toggle-department", "toggle ${esc} ${(document.getElementById("charttype") as HTMLSelectElement).value} chart");' id='${esc + "-chartwidget"}' title="Click for publication distribution">`
                     + ChartIcon + "</span>";
                 s += "</td>";

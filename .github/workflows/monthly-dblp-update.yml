@@ -1,16 +1,20 @@
-name: Monthly DBLP Update
+name: Weekly DBLP Update And Deploy (Yale + Zhejiang)
 
 on:
   schedule:
-    # Run at midnight UTC on the 28th of each month
-    - cron: '0 0 28 * *'
-  workflow_dispatch:  # Allow manual trigger
+    # Weekly: Monday 03:00 UTC
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: weekly-yale-zju-update
+  cancel-in-progress: false
+
 jobs:
-  update-dblp:
+  update-build-verify-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
-          fetch-depth: 0  # Fetch full history for git pull --rebase
+          fetch-depth: 0
 
       - name: Set up Git identity
         run: |
@@ -26,53 +30,72 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Install dependencies
         run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
+          npm install -g typescript google-closure-compiler
 
-      - name: Run DBLP update
+      - name: Update DBLP and rebuild Yale/Zhejiang subset
         run: |
+          set -euo pipefail
           make update-dblp-full
+          python3 util/build_yale_zju_subset.py
+          python3 util/generate_yilun_papers.py
+          python3 util/build_generated_author_info_subset.py
+          make csrankings.js csrankings.min.js submit/submit.js
 
-      - name: Commit and push changes
+      - name: Verify subset integrity and Yilun metrics data
         run: |
+          set -euo pipefail
+          python3 util/verify_yale_zju_subset.py
+
+      - name: Remove intermediate DBLP artifacts
+        run: |
+          set -euo pipefail
+          rm -f dblp.xml.xz dblp-original.xml.gz prev-dblp.xml.gz name-changes.csv
+
+      - name: Commit and push changes (deploy only after successful verification)
+        run: |
+          set -euo pipefail
           git add -A
           if git diff --cached --quiet; then
             echo "No changes to commit."
-          else
-            git commit -m "Auto-commit: monthly DBLP update"
-            
-            # Retry logic to handle concurrent pushes (race condition fix)
-            MAX_RETRIES=3
-            RETRY_COUNT=0
-            RETRY_DELAY=5
-            
-            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-              echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES: Pushing changes..."
-              
-              if git push; then
-                echo "Successfully pushed changes."
-                exit 0
-              else
-                RETRY_COUNT=$((RETRY_COUNT + 1))
-                
-                if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-                  echo "Push failed. Pulling with rebase and retrying in ${RETRY_DELAY}s..."
-                  sleep $RETRY_DELAY
-                  
-                  # Pull with rebase to integrate remote changes
-                  git pull --rebase origin gh-pages
-                  
-                  # Increase delay for next retry (exponential backoff)
-                  RETRY_DELAY=$((RETRY_DELAY + 5))
-                else
-                  echo "Error: Failed to push after $MAX_RETRIES attempts."
-                  exit 1
-                fi
-              fi
-            done
+            exit 0
           fi
+
+          git commit -m "Auto: weekly DBLP update and Yale/Zhejiang deploy rebuild"
+
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          RETRY_DELAY=5
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES: pushing changes..."
+
+            if git push; then
+              echo "Successfully pushed changes."
+              exit 0
+            fi
+
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "Push failed. Pulling with rebase and retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+              git pull --rebase origin gh-pages
+              RETRY_DELAY=$((RETRY_DELAY + 5))
+            else
+              echo "Error: failed to push after $MAX_RETRIES attempts."
+              exit 1
+            fi
+          done

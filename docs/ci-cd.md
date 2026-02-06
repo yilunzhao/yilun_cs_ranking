@@ -25,7 +25,7 @@ This prevents data loss when multiple PRs are merged in quick succession, ensuri
 | `.github/workflows/post-merge-rebuild.yml` | Test + build on push |
 | `.github/workflows/commit_validation.yml` | PR validation |
 | `.github/workflows/process-submission.yml` | Issue -> PR automation |
-| `.github/workflows/monthly-dblp-update.yml` | Monthly DBLP data refresh |
+| `.github/workflows/monthly-dblp-update.yml` | Weekly DBLP refresh + Yale/Zhejiang subset rebuild + deploy |
 | `.github/workflows/update-sponsors.yml` | Sponsor logo updates |
 | `.github/workflows/stale.yml` | Stale PR management |
 

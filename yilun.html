@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yilun Zhao Paper Details</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 24px;
+      color: #1f2937;
+      line-height: 1.35;
+    }
+    h1, h2 {
+      margin: 0 0 10px 0;
+    }
+    .meta, .rules, .controls, .summary {
+      margin: 12px 0;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #f9fafb;
+    }
+    .controls label {
+      margin-right: 16px;
+      font-weight: 600;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 6px 8px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      background: #f3f4f6;
+    }
+    .muted {
+      color: #4b5563;
+      font-size: 0.92rem;
+    }
+    .mono {
+      font-family: Menlo, Consolas, monospace;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Yilun Zhao Paper Details</h1>
+  <p><a href="./index.html">Back to rankings</a></p>
+
+  <div class="meta" id="meta"></div>
+
+  <div class="rules">
+    <strong>Inclusion rules</strong>
+    <p class="muted">
+      Paper records are generated from DBLP using the same CSRankings venue mapping and paper-count rules
+      (`countPaper`) used for ranking metrics. The displayed metrics on this page use year range
+      <span class="mono" id="display-range">2022-2026</span>.
+    </p>
+    <p class="muted">
+      Author matching is done against DBLP names:
+      <span class="mono" id="matched-names"></span>.
+    </p>
+  </div>
+
+  <div class="controls">
+    <strong>Author Position Filters</strong>
+    <div style="margin-top:8px;">
+      <label><input type="checkbox" id="first" checked> First author</label>
+      <label><input type="checkbox" id="second" checked> Second author</label>
+      <label><input type="checkbox" id="last" checked> Last author</label>
+    </div>
+  </div>
+
+  <div class="summary" id="summary"></div>
+
+  <h2>Included In Displayed Metrics</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Year</th>
+        <th>Venue</th>
+        <th>Area</th>
+        <th>Title</th>
+        <th>Author Position</th>
+        <th>Authors</th>
+      </tr>
+    </thead>
+    <tbody id="included-body"></tbody>
+  </table>
+
+  <h2>Excluded By Current Display Filters</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Year</th>
+        <th>Venue</th>
+        <th>Area</th>
+        <th>Title</th>
+        <th>Reason</th>
+      </tr>
+    </thead>
+    <tbody id="display-excluded-body"></tbody>
+  </table>
+
+  <h2>Excluded By CSRankings Rules</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Year</th>
+        <th>Venue</th>
+        <th>Title</th>
+        <th>Reason</th>
+      </tr>
+    </thead>
+    <tbody id="rule-excluded-body"></tbody>
+  </table>
+
+  <script>
+    const byId = (id) => document.getElementById(id);
+
+    function dblpLink(url) {
+      if (!url) {
+        return "";
+      }
+      if (url.startsWith("http://") || url.startsWith("https://")) {
+        return url;
+      }
+      if (url.startsWith("db/")) {
+        return `https://dblp.org/rec/${url}.html`;
+      }
+      return `https://dblp.org/${url}`;
+    }
+
+    function posText(rec) {
+      const tags = [];
+      if (rec.is_first_author) tags.push("first");
+      if (rec.is_second_author) tags.push("second");
+      if (rec.is_last_author) tags.push("last");
+      if (tags.length === 0) tags.push("middle");
+      return tags.join(", ");
+    }
+
+    function matchesPosition(rec, filters) {
+      return (
+        (filters.first && rec.is_first_author) ||
+        (filters.second && rec.is_second_author) ||
+        (filters.last && rec.is_last_author)
+      );
+    }
+
+    function paperCell(rec) {
+      const link = dblpLink(rec.url);
+      const escaped = rec.title.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+      return link
+        ? `<a href="${link}" target="_blank" rel="noopener noreferrer">${escaped}</a>`
+        : escaped;
+    }
+
+    function authorList(rec) {
+      return rec.authors
+        .map((name, idx) => idx === rec.author_index ? `<strong>${name}</strong>` : name)
+        .join(", ");
+    }
+
+    function render(data) {
+      const first = byId("first").checked;
+      const second = byId("second").checked;
+      const last = byId("last").checked;
+      const filters = { first, second, last };
+      const rangeText = `${data.display_start_year}-${data.display_end_year}`;
+      byId("display-range").textContent = rangeText;
+      byId("matched-names").textContent = data.matched_names.join(", ");
+
+      const includedBody = byId("included-body");
+      const displayExcludedBody = byId("display-excluded-body");
+      const ruleExcludedBody = byId("rule-excluded-body");
+      includedBody.innerHTML = "";
+      displayExcludedBody.innerHTML = "";
+      ruleExcludedBody.innerHTML = "";
+
+      let includedCount = 0;
+      let displayExcludedCount = 0;
+      let ruleExcludedCount = 0;
+      let countedTotal = 0;
+
+      for (const rec of data.records) {
+        if (!rec.included_by_csrankings) {
+          ruleExcludedCount++;
+          ruleExcludedBody.innerHTML += `<tr>
+            <td>${rec.year}</td>
+            <td>${rec.venue}</td>
+            <td>${paperCell(rec)}</td>
+            <td>${rec.exclusion_reason}</td>
+          </tr>`;
+          continue;
+        }
+
+        countedTotal++;
+        const inRange = rec.year >= data.display_start_year && rec.year <= data.display_end_year;
+        const posOK = matchesPosition(rec, filters);
+
+        if (inRange && posOK) {
+          includedCount++;
+          includedBody.innerHTML += `<tr>
+            <td>${rec.year}</td>
+            <td>${rec.venue}</td>
+            <td>${rec.area}</td>
+            <td>${paperCell(rec)}</td>
+            <td>${posText(rec)}</td>
+            <td>${authorList(rec)}</td>
+          </tr>`;
+        } else {
+          displayExcludedCount++;
+          const reasons = [];
+          if (!inRange) {
+            reasons.push(`year outside ${rangeText}`);
+          }
+          if (!posOK) {
+            reasons.push("author-position filter not selected");
+          }
+          displayExcludedBody.innerHTML += `<tr>
+            <td>${rec.year}</td>
+            <td>${rec.venue}</td>
+            <td>${rec.area}</td>
+            <td>${paperCell(rec)}</td>
+            <td>${reasons.join("; ")}</td>
+          </tr>`;
+        }
+      }
+
+      if (includedCount === 0) {
+        includedBody.innerHTML = `<tr><td colspan="6" class="muted">No papers match current filters.</td></tr>`;
+      }
+      if (displayExcludedCount === 0) {
+        displayExcludedBody.innerHTML = `<tr><td colspan="5" class="muted">No papers excluded by display filters.</td></tr>`;
+      }
+      if (ruleExcludedCount === 0) {
+        ruleExcludedBody.innerHTML = `<tr><td colspan="4" class="muted">No papers excluded by CSRankings rules in this dataset.</td></tr>`;
+      }
+
+      byId("meta").innerHTML = `
+        <strong>Faculty:</strong> ${data.canonical_name}<br>
+        <strong>Total candidate records:</strong> ${data.records.length}<br>
+        <strong>Total CSRankings-counted records:</strong> ${countedTotal}
+      `;
+
+      byId("summary").innerHTML = `
+        <strong>Current view summary</strong><br>
+        Included in displayed metrics: <strong>${includedCount}</strong><br>
+        Excluded by display filters: <strong>${displayExcludedCount}</strong><br>
+        Excluded by CSRankings rules: <strong>${ruleExcludedCount}</strong>
+      `;
+    }
+
+    fetch("./yilun-papers.json")
+      .then((resp) => {
+        if (!resp.ok) {
+          throw new Error(`Failed to load yilun-papers.json (${resp.status})`);
+        }
+        return resp.json();
+      })
+      .then((data) => {
+        render(data);
+        ["first", "second", "last"].forEach((id) => {
+          byId(id).addEventListener("change", () => render(data));
+        });
+      })
+      .catch((err) => {
+        byId("summary").textContent = `Failed to load paper data: ${err.message}`;
+      });
+  </script>
+</body>
+</html>

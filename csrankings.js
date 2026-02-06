@@ -1100,7 +1100,7 @@ var CSRankings;
                     deptDisplay += `&nbsp;<a href="${encodeURI(instHomepage)}" target="_blank" onclick="event.stopPropagation(); trackOutboundLink('${encodeURI(instHomepage)}', true);" title="Visit ${dept} CS department"><img alt="Homepage" src="${CSRankings.homepageImage}" style="opacity:0.7;"></a>`;
                 }
                 s += "&nbsp;" + deptDisplay
-                    + `&nbsp;<img  title="${country}" src="/flags/${abbrv}.png">&nbsp;`
+                    + `&nbsp;<img  title="${country}" src="./flags/${abbrv}.png">&nbsp;`
                     + `<span class="hovertip" onclick='csr.toggleChart("${esc}"); ga("send", "event", "chart", "toggle-department", "toggle ${esc} ${document.getElementById("charttype").value} chart");' id='${esc + "-chartwidget"}' title="Click for publication distribution">`
                     + ChartIcon + "</span>";
                 s += "</td>";
@@ -2590,7 +2590,7 @@ var CSRankings;
     function getRegionIcon(region) {
         if (regionGlobeIcons[region]) {
             const iconFile = regionGlobeIcons[region];
-            return `<img src="/flags/${iconFile}.png" alt="${region}" class="region-globe-img">`;
+            return `<img src="./flags/${iconFile}.png" alt="${region}" class="region-globe-img">`;
         }
         return '';
     }
@@ -2630,7 +2630,7 @@ var CSRankings;
                 else {
                     // Country with flag
                     optionsHTML += `<div class="region-option ${selected}" data-value="${value}">
-                        <img src="/flags/${value}.png" alt="${value}">
+                        <img src="./flags/${value}.png" alt="${value}">
                         <span>${text}</span>
                     </div>`;
                 }
@@ -2694,12 +2694,12 @@ var CSRankings;
         if (flagEl) {
             if (regionGlobeIcons[value]) {
                 // Multi-country region - show globe icon
-                flagEl.src = `/flags/${regionGlobeIcons[value]}.png`;
+                flagEl.src = `./flags/${regionGlobeIcons[value]}.png`;
                 flagEl.style.display = 'block';
             }
             else {
                 // Country - show flag
-                flagEl.src = `/flags/${value}.png`;
+                flagEl.src = `./flags/${value}.png`;
                 flagEl.style.display = 'block';
             }
         }
