@@ -635,6 +635,7 @@ var CSRankings;
                 continue;
             }
             const name = auth.name;
+            const authorKey = `${name}@@${dept}`;
             const rawArea = auth.area; // Keep the raw area (could be child like 'aaai')
             // For areaDeptAdjustedCount, we need to map to parent area
             let parentArea = rawArea;
@@ -650,23 +651,23 @@ var CSRankings;
             const adjustedCount = parseFloat(auth.adjustedcount);
             cache.areaData[rawArea][dept] += adjustedCount;
             // Track faculty data per RAW area
-            if (!(name in cache.facultyAreaData[rawArea])) {
-                cache.facultyAreaData[rawArea][name] = { count: 0, adjustedCount: 0 };
+            if (!(authorKey in cache.facultyAreaData[rawArea])) {
+                cache.facultyAreaData[rawArea][authorKey] = { count: 0, adjustedCount: 0 };
             }
-            cache.facultyAreaData[rawArea][name].count += parseInt(auth.count);
-            cache.facultyAreaData[rawArea][name].adjustedCount += adjustedCount;
+            cache.facultyAreaData[rawArea][authorKey].count += parseInt(auth.count);
+            cache.facultyAreaData[rawArea][authorKey].adjustedCount += adjustedCount;
             // Track all faculty and their departments
-            if (!(name in cache.allFaculty)) {
-                cache.allFaculty[name] = { dept: dept };
+            if (!(authorKey in cache.allFaculty)) {
+                cache.allFaculty[authorKey] = { dept: dept };
             }
             // Build deptNames and deptCounts (first time we see each faculty member)
-            if (!(name in visitedForDept)) {
-                visitedForDept[name] = true;
+            if (!(authorKey in visitedForDept)) {
+                visitedForDept[authorKey] = true;
                 if (!(dept in cache.deptNames)) {
                     cache.deptNames[dept] = [];
                     cache.deptCounts[dept] = 0;
                 }
-                cache.deptNames[dept].push(name);
+                cache.deptNames[dept].push(authorKey);
                 cache.deptCounts[dept] += 1;
             }
         }
@@ -712,24 +713,24 @@ var CSRankings;
             const facultyArea = cache.facultyAreaData[rawArea];
             if (!facultyArea)
                 continue;
-            for (const name in facultyArea) {
-                if (!(name in facultySeen)) {
-                    facultySeen[name] = true;
-                    facultycount[name] = 0;
-                    facultyAdjustedCount[name] = 0;
+            for (const authorKey in facultyArea) {
+                if (!(authorKey in facultySeen)) {
+                    facultySeen[authorKey] = true;
+                    facultycount[authorKey] = 0;
+                    facultyAdjustedCount[authorKey] = 0;
                 }
-                facultycount[name] += facultyArea[name].count;
-                facultyAdjustedCount[name] += facultyArea[name].adjustedCount;
+                facultycount[authorKey] += facultyArea[authorKey].count;
+                facultyAdjustedCount[authorKey] += facultyArea[authorKey].adjustedCount;
             }
         }
         // Build deptNames and deptCounts from faculty we found
-        for (const name in facultySeen) {
-            const dept = cache.allFaculty[name].dept;
+        for (const authorKey in facultySeen) {
+            const dept = cache.allFaculty[authorKey].dept;
             if (!(dept in deptNames)) {
                 deptNames[dept] = [];
                 deptCounts[dept] = 0;
             }
-            deptNames[dept].push(name);
+            deptNames[dept].push(authorKey);
             deptCounts[dept] += 1;
         }
     }
@@ -759,6 +760,7 @@ var CSRankings;
                 continue;
             }
             const name = auth.name;
+            const authorKey = `${name}@@${dept}`;
             // If this area is a child area, accumulate totals for parent.
             if (area in CSRankings.parentMap) {
                 area = CSRankings.parentMap[area];
@@ -771,19 +773,19 @@ var CSRankings;
             const adjustedCount = parseFloat(authors[r].adjustedcount);
             areaDeptAdjustedCount[areaDept] += adjustedCount;
             /* Is this the first time we have seen this person? */
-            if (!(name in visited)) {
-                visited[name] = true;
-                facultycount[name] = 0;
-                facultyAdjustedCount[name] = 0;
+            if (!(authorKey in visited)) {
+                visited[authorKey] = true;
+                facultycount[authorKey] = 0;
+                facultyAdjustedCount[authorKey] = 0;
                 if (!(dept in deptCounts)) {
                     deptCounts[dept] = 0;
                     deptNames[dept] = [];
                 }
-                deptNames[dept].push(name);
+                deptNames[dept].push(authorKey);
                 deptCounts[dept] += 1;
             }
-            facultycount[name] += count;
-            facultyAdjustedCount[name] += adjustedCount;
+            facultycount[authorKey] += count;
+            facultyAdjustedCount[authorKey] += adjustedCount;
         }
     }
     CSRankings.buildDepartments = buildDepartments;
@@ -954,6 +956,17 @@ var CSRankings;
 */
 var CSRankings;
 (function (CSRankings) {
+    function splitFacultyKey(nameOrKey) {
+        const sep = "@@";
+        const index = nameOrKey.indexOf(sep);
+        if (index < 0) {
+            return { displayName: nameOrKey, deptHint: "" };
+        }
+        return {
+            displayName: nameOrKey.substring(0, index),
+            deptHint: nameOrKey.substring(index + sep.length),
+        };
+    }
     /* Build drop down HTML for a single department's faculty */
     function buildFacultyHTML(_dept, names, facultycount, facultyAdjustedCount, homepages, dblpAuthors, note, acmfellow, turing, scholarInfo, areaStringFn, ChartIcon, _subareas) {
         let p = '<div class="table"><table class="table table-sm table-striped"><thead><th></th><td><small><em>'
@@ -963,52 +976,56 @@ var CSRankings;
             + '</small></td></thead><tbody>';
         /* Build a dict of just faculty from this department for sorting purposes. */
         let fc = {};
-        for (const name of names) {
-            fc[name] = facultycount[name];
+        for (const nameKey of names) {
+            fc[nameKey] = facultycount[nameKey];
         }
         let keys = Object.keys(fc);
-        keys.sort((a, b) => {
-            if (fc[b] === fc[a]) {
-                const fb = Math.round(10.0 * facultyAdjustedCount[b]) / 10.0;
-                const fa = Math.round(10.0 * facultyAdjustedCount[a]) / 10.0;
+        keys.sort((aKey, bKey) => {
+            const aName = splitFacultyKey(aKey).displayName;
+            const bName = splitFacultyKey(bKey).displayName;
+            if (fc[bKey] === fc[aKey]) {
+                const fb = Math.round(10.0 * facultyAdjustedCount[bKey]) / 10.0;
+                const fa = Math.round(10.0 * facultyAdjustedCount[aKey]) / 10.0;
                 if (fb === fa) {
-                    return CSRankings.compareNames(a, b);
+                    return CSRankings.compareNames(aName, bName);
                 }
                 else {
                     return fb - fa;
                 }
             }
             else {
-                return fc[b] - fc[a];
+                return fc[bKey] - fc[aKey];
             }
         });
-        for (const name of keys) {
-            const homePage = encodeURI(homepages[name]);
-            const dblpName = dblpAuthors[name];
-            p += `<tr class="faculty-row" style="cursor:pointer;" onclick="window.open('${homePage}', '_blank'); trackOutboundLink('${homePage}', true);" title="Click anywhere to visit ${name}'s home page"><td>&nbsp;&nbsp;&nbsp;&nbsp;</td><td><small>`
+        for (const nameKey of keys) {
+            const parsed = splitFacultyKey(nameKey);
+            const displayName = parsed.displayName;
+            const homePage = encodeURI(homepages[displayName] || "#");
+            const dblpName = dblpAuthors[displayName] || "#";
+            p += `<tr class="faculty-row" style="cursor:pointer;" onclick="window.open('${homePage}', '_blank'); trackOutboundLink('${homePage}', true);" title="Click anywhere to visit ${displayName}'s home page"><td>&nbsp;&nbsp;&nbsp;&nbsp;</td><td><small>`
                 + `<a title="Click for author\'s home page." target="_blank" href="${homePage}" `
                 + `onclick="event.stopPropagation(); trackOutboundLink('${homePage}', true); return false;"`
-                + `>${name}</a>&nbsp;`;
-            if (note.hasOwnProperty(name)) {
-                const url = CSRankings.noteMap[note[name]];
+                + `>${displayName}</a>&nbsp;`;
+            if (note.hasOwnProperty(displayName)) {
+                const url = CSRankings.noteMap[note[displayName]];
                 const href = `<a href="${url}" onclick="event.stopPropagation();">`;
-                p += `<span class="note" title="Note">[${href + note[name]}</a>]</span>&nbsp;`;
+                p += `<span class="note" title="Note">[${href + note[displayName]}</a>]</span>&nbsp;`;
             }
-            if (acmfellow.hasOwnProperty(name)) {
-                p += `<span title="ACM Fellow (${acmfellow[name]})"><img alt="ACM Fellow" src="${CSRankings.acmfellowImage}"></span>&nbsp;`;
+            if (acmfellow.hasOwnProperty(displayName)) {
+                p += `<span title="ACM Fellow (${acmfellow[displayName]})"><img alt="ACM Fellow" src="${CSRankings.acmfellowImage}"></span>&nbsp;`;
             }
-            if (turing.hasOwnProperty(name)) {
+            if (turing.hasOwnProperty(displayName)) {
                 p += `<span title="Turing Award"><img alt="Turing Award" src="${CSRankings.turingImage}"></span>&nbsp;`;
             }
-            const areaStr = areaStringFn(name);
+            const areaStr = areaStringFn(nameKey);
             p += `<span class="areaname">${areaStr.toLowerCase()}</span>&nbsp;`;
             p += `<a title="Click for author\'s home page." target="_blank" href="${homePage}" `
                 + `onclick="event.stopPropagation(); trackOutboundLink(\'${homePage}\', true); return false;"`
                 + '>'
                 + `<img alt=\"Home page\" src=\"${CSRankings.homepageImage}\"></a>&nbsp;`;
-            if (scholarInfo.hasOwnProperty(name)) {
-                if (scholarInfo[name] != "NOSCHOLARPAGE") {
-                    const url = `https://scholar.google.com/citations?user=${scholarInfo[name]}&hl=en&oi=ao`;
+            if (scholarInfo.hasOwnProperty(displayName)) {
+                if (scholarInfo[displayName] != "NOSCHOLARPAGE") {
+                    const url = `https://scholar.google.com/citations?user=${scholarInfo[displayName]}&hl=en&oi=ao`;
                     p += `<a title="Click for author\'s Google Scholar page." target="_blank" href="${url}" onclick="event.stopPropagation(); trackOutboundLink('${url}', true); return false;">`
                         + '<img alt="Google Scholar" src="scholar-favicon.ico" height="10" width="10"></a>&nbsp;';
                 }
@@ -1016,18 +1033,18 @@ var CSRankings;
             p += `<a title="Click for author\'s DBLP entry." target="_blank" href="${dblpName}" onclick="event.stopPropagation(); trackOutboundLink('${dblpName}', true); return false;">`;
             p += '<img alt="DBLP" src="dblp.png">'
                 + '</a>';
-            p += `<span onclick='event.stopPropagation(); csr.toggleChart("${escape(name)}"); ga("send", "event", "chart", "toggle", "toggle ${escape(name)} ${document.getElementById("charttype").value} chart");' title="Click for author's publication profile." class="hovertip" id="${escape(name) + '-chartwidget'}">`;
+            p += `<span onclick='event.stopPropagation(); csr.toggleChart("${escape(nameKey)}"); ga("send", "event", "chart", "toggle", "toggle ${escape(nameKey)} ${document.getElementById("charttype").value} chart");' title="Click for author's publication profile." class="hovertip" id="${escape(nameKey) + '-chartwidget'}">`;
             p += ChartIcon + "</span>"
                 + '</small>'
                 + '</td><td align="right"><small>'
                 + `<a title="Click for author's DBLP entry." target="_blank" href="${dblpName}" `
-                + `onclick="event.stopPropagation(); trackOutboundLink('${dblpName}', true); return false;">${fc[name]}</a>`
+                + `onclick="event.stopPropagation(); trackOutboundLink('${dblpName}', true); return false;">${fc[nameKey]}</a>`
                 + "</small></td>"
                 + '<td align="right"><small>'
-                + (Math.round(10.0 * facultyAdjustedCount[name]) / 10.0).toFixed(1)
+                + (Math.round(10.0 * facultyAdjustedCount[nameKey]) / 10.0).toFixed(1)
                 + "</small></td></tr>"
                 + "<tr><td colspan=\"4\">"
-                + `<div class="csr-chart" id="${escape(name)}-chart">`
+                + `<div class="csr-chart" id="${escape(nameKey)}-chart">`
                 + '</div>'
                 + "</td></tr>";
         }
@@ -1145,6 +1162,7 @@ var CSRankings;
         let datadict = {};
         const keys = CSRankings.topTierAreas;
         const uname = unescape(name);
+        const lookupName = splitFacultyKey(uname).displayName;
         // Areas with their category info for color map (from https://colorbrewer2.org/#type=qualitative&scheme=Set1&n=4).
         const chartAreas = [
             ...CSRankings.aiAreas.map(key => ({ key: key, label: areaDict[key], color: "#377eb8" })),
@@ -1154,13 +1172,13 @@ var CSRankings;
         ];
         chartAreas.forEach(area => datadict[area.key] = 0);
         for (let key in keys) {
-            if (!(uname in authorAreas)) {
+            if (!(lookupName in authorAreas)) {
                 // Defensive programming.
                 // This should only happen if we have an error in the aliases file.
                 return;
             }
             // Round it to the nearest 0.1.
-            const value = Math.round(authorAreas[uname][key] * 10) / 10;
+            const value = Math.round(authorAreas[lookupName][key] * 10) / 10;
             if (value > 0) {
                 if (key in CSRankings.parentMap) {
                     key = CSRankings.parentMap[key];
@@ -4124,17 +4142,23 @@ var CSRankings;
             const endyear = parseInt(document.getElementById("toyear").selectedOptions[0].text);
             this.authorAreas = CSRankings.countAuthorAreas(this.authors, this.areaDict, startyear, endyear);
         }
+        baseNameFromKey(nameOrKey) {
+            const sep = "@@";
+            const index = nameOrKey.indexOf(sep);
+            return index >= 0 ? nameOrKey.substring(0, index) : nameOrKey;
+        }
         areaString(name) {
             if (name in this.areaStringMap) {
                 return this.areaStringMap[name];
             }
+            const baseName = this.baseNameFromKey(name);
             // Create a summary of areas, separated by commas,
             // corresponding to a faculty member's publications.
             const pubThreshold = 0.2;
             const numStddevs = 1.0;
             const topN = 3;
             const minPubThreshold = 1;
-            if (!this.authorAreas[name]) {
+            if (!this.authorAreas[baseName]) {
                 return "";
             }
             // Create an object containing areas and number of publications.
@@ -4142,7 +4166,7 @@ var CSRankings;
             const keys = CSRankings.topTierAreas;
             let maxValue = 0;
             for (let key in keys) {
-                const value = this.authorAreas[name][key];
+                const value = this.authorAreas[baseName][key];
                 if (key in CSRankings.parentMap) {
                     key = this.areaDict[key];
                 }

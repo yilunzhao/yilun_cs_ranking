@@ -6,6 +6,18 @@
 
 namespace CSRankings {
 
+    function splitFacultyKey(nameOrKey: string): { displayName: string; deptHint: string } {
+        const sep = "@@";
+        const index = nameOrKey.indexOf(sep);
+        if (index < 0) {
+            return { displayName: nameOrKey, deptHint: "" };
+        }
+        return {
+            displayName: nameOrKey.substring(0, index),
+            deptHint: nameOrKey.substring(index + sep.length),
+        };
+    }
+
     /* Build drop down HTML for a single department's faculty */
     export function buildFacultyHTML(
         _dept: string,
@@ -31,44 +43,48 @@ namespace CSRankings {
 
         /* Build a dict of just faculty from this department for sorting purposes. */
         let fc: { [key: string]: number } = {};
-        for (const name of names) {
-            fc[name] = facultycount[name];
+        for (const nameKey of names) {
+            fc[nameKey] = facultycount[nameKey];
         }
         let keys = Object.keys(fc);
-        keys.sort((a: string, b: string) => {
-            if (fc[b] === fc[a]) {
-                const fb = Math.round(10.0 * facultyAdjustedCount[b]) / 10.0;
-                const fa = Math.round(10.0 * facultyAdjustedCount[a]) / 10.0;
+        keys.sort((aKey: string, bKey: string) => {
+            const aName = splitFacultyKey(aKey).displayName;
+            const bName = splitFacultyKey(bKey).displayName;
+            if (fc[bKey] === fc[aKey]) {
+                const fb = Math.round(10.0 * facultyAdjustedCount[bKey]) / 10.0;
+                const fa = Math.round(10.0 * facultyAdjustedCount[aKey]) / 10.0;
                 if (fb === fa) {
-                    return compareNames(a, b);
+                    return compareNames(aName, bName);
                 } else {
                     return fb - fa;
                 }
             } else {
-                return fc[b] - fc[a];
+                return fc[bKey] - fc[aKey];
             }
         });
 
-        for (const name of keys) {
-            const homePage = encodeURI(homepages[name]);
-            const dblpName = dblpAuthors[name];
+        for (const nameKey of keys) {
+            const parsed = splitFacultyKey(nameKey);
+            const displayName = parsed.displayName;
+            const homePage = encodeURI(homepages[displayName] || "#");
+            const dblpName = dblpAuthors[displayName] || "#";
 
-            p += `<tr class="faculty-row" style="cursor:pointer;" onclick="window.open('${homePage}', '_blank'); trackOutboundLink('${homePage}', true);" title="Click anywhere to visit ${name}'s home page"><td>&nbsp;&nbsp;&nbsp;&nbsp;</td><td><small>`
+            p += `<tr class="faculty-row" style="cursor:pointer;" onclick="window.open('${homePage}', '_blank'); trackOutboundLink('${homePage}', true);" title="Click anywhere to visit ${displayName}'s home page"><td>&nbsp;&nbsp;&nbsp;&nbsp;</td><td><small>`
                 + `<a title="Click for author\'s home page." target="_blank" href="${homePage}" `
                 + `onclick="event.stopPropagation(); trackOutboundLink('${homePage}', true); return false;"`
-                + `>${name}</a>&nbsp;`;
-            if (note.hasOwnProperty(name)) {
-                const url = noteMap[note[name]];
+                + `>${displayName}</a>&nbsp;`;
+            if (note.hasOwnProperty(displayName)) {
+                const url = noteMap[note[displayName]];
                 const href = `<a href="${url}" onclick="event.stopPropagation();">`;
-                p += `<span class="note" title="Note">[${href + note[name]}</a>]</span>&nbsp;`;
+                p += `<span class="note" title="Note">[${href + note[displayName]}</a>]</span>&nbsp;`;
             }
-            if (acmfellow.hasOwnProperty(name)) {
-                p += `<span title="ACM Fellow (${acmfellow[name]})"><img alt="ACM Fellow" src="${acmfellowImage}"></span>&nbsp;`;
+            if (acmfellow.hasOwnProperty(displayName)) {
+                p += `<span title="ACM Fellow (${acmfellow[displayName]})"><img alt="ACM Fellow" src="${acmfellowImage}"></span>&nbsp;`;
             }
-            if (turing.hasOwnProperty(name)) {
+            if (turing.hasOwnProperty(displayName)) {
                 p += `<span title="Turing Award"><img alt="Turing Award" src="${turingImage}"></span>&nbsp;`;
             }
-            const areaStr = areaStringFn(name);
+            const areaStr = areaStringFn(nameKey);
             p += `<span class="areaname">${areaStr.toLowerCase()}</span>&nbsp;`;
 
             p += `<a title="Click for author\'s home page." target="_blank" href="${homePage}" `
@@ -76,9 +92,9 @@ namespace CSRankings {
                 + '>'
                 + `<img alt=\"Home page\" src=\"${homepageImage}\"></a>&nbsp;`;
 
-            if (scholarInfo.hasOwnProperty(name)) {
-                if (scholarInfo[name] != "NOSCHOLARPAGE") {
-                    const url = `https://scholar.google.com/citations?user=${scholarInfo[name]}&hl=en&oi=ao`;
+            if (scholarInfo.hasOwnProperty(displayName)) {
+                if (scholarInfo[displayName] != "NOSCHOLARPAGE") {
+                    const url = `https://scholar.google.com/citations?user=${scholarInfo[displayName]}&hl=en&oi=ao`;
                     p += `<a title="Click for author\'s Google Scholar page." target="_blank" href="${url}" onclick="event.stopPropagation(); trackOutboundLink('${url}', true); return false;">`
                         + '<img alt="Google Scholar" src="scholar-favicon.ico" height="10" width="10"></a>&nbsp;';
                 }
@@ -88,18 +104,18 @@ namespace CSRankings {
             p += '<img alt="DBLP" src="dblp.png">'
                 + '</a>';
 
-            p += `<span onclick='event.stopPropagation(); csr.toggleChart("${escape(name)}"); ga("send", "event", "chart", "toggle", "toggle ${escape(name)} ${(document.getElementById("charttype") as HTMLSelectElement).value} chart");' title="Click for author's publication profile." class="hovertip" id="${escape(name) + '-chartwidget'}">`;
+            p += `<span onclick='event.stopPropagation(); csr.toggleChart("${escape(nameKey)}"); ga("send", "event", "chart", "toggle", "toggle ${escape(nameKey)} ${(document.getElementById("charttype") as HTMLSelectElement).value} chart");' title="Click for author's publication profile." class="hovertip" id="${escape(nameKey) + '-chartwidget'}">`;
             p += ChartIcon + "</span>"
                 + '</small>'
                 + '</td><td align="right"><small>'
                 + `<a title="Click for author's DBLP entry." target="_blank" href="${dblpName}" `
-                + `onclick="event.stopPropagation(); trackOutboundLink('${dblpName}', true); return false;">${fc[name]}</a>`
+                + `onclick="event.stopPropagation(); trackOutboundLink('${dblpName}', true); return false;">${fc[nameKey]}</a>`
                 + "</small></td>"
                 + '<td align="right"><small>'
-                + (Math.round(10.0 * facultyAdjustedCount[name]) / 10.0).toFixed(1)
+                + (Math.round(10.0 * facultyAdjustedCount[nameKey]) / 10.0).toFixed(1)
                 + "</small></td></tr>"
                 + "<tr><td colspan=\"4\">"
-                + `<div class="csr-chart" id="${escape(name)}-chart">`
+                + `<div class="csr-chart" id="${escape(nameKey)}-chart">`
                 + '</div>'
                 + "</td></tr>";
         }
@@ -237,6 +253,7 @@ namespace CSRankings {
         let datadict: { [key: string]: number } = {};
         const keys = topTierAreas;
         const uname = unescape(name);
+        const lookupName = splitFacultyKey(uname).displayName;
 
         // Areas with their category info for color map (from https://colorbrewer2.org/#type=qualitative&scheme=Set1&n=4).
         const chartAreas = [
@@ -252,13 +269,13 @@ namespace CSRankings {
         chartAreas.forEach(area => datadict[area.key] = 0);
 
         for (let key in keys) {
-            if (!(uname in authorAreas)) {
+            if (!(lookupName in authorAreas)) {
                 // Defensive programming.
                 // This should only happen if we have an error in the aliases file.
                 return;
             }
             // Round it to the nearest 0.1.
-            const value = Math.round(authorAreas[uname][key] * 10) / 10;
+            const value = Math.round(authorAreas[lookupName][key] * 10) / 10;
 
             if (value > 0) {
                 if (key in parentMap) {

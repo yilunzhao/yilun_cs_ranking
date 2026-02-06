@@ -257,17 +257,24 @@ namespace CSRankings {
             this.authorAreas = countAuthorAreas(this.authors, this.areaDict, startyear, endyear);
         }
 
+        private baseNameFromKey(nameOrKey: string): string {
+            const sep = "@@";
+            const index = nameOrKey.indexOf(sep);
+            return index >= 0 ? nameOrKey.substring(0, index) : nameOrKey;
+        }
+
         private areaString(name: string): string {
             if (name in this.areaStringMap) {
                 return this.areaStringMap[name];
             }
+            const baseName = this.baseNameFromKey(name);
             // Create a summary of areas, separated by commas,
             // corresponding to a faculty member's publications.
             const pubThreshold = 0.2;
             const numStddevs = 1.0;
             const topN = 3;
             const minPubThreshold = 1;
-            if (!this.authorAreas[name]) {
+            if (!this.authorAreas[baseName]) {
                 return "";
             }
             // Create an object containing areas and number of publications.
@@ -275,7 +282,7 @@ namespace CSRankings {
             const keys = topTierAreas;
             let maxValue = 0;
             for (let key in keys) {
-                const value = this.authorAreas[name][key];
+                const value = this.authorAreas[baseName][key];
                 if (key in parentMap) {
                     key = this.areaDict[key];
                 }

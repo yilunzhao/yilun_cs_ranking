@@ -72,6 +72,7 @@ namespace CSRankings {
             }
 
             const name = auth.name;
+            const authorKey = `${name}@@${dept}`;
             const rawArea = auth.area;  // Keep the raw area (could be child like 'aaai')
 
             // For areaDeptAdjustedCount, we need to map to parent area
@@ -91,25 +92,25 @@ namespace CSRankings {
             cache.areaData[rawArea][dept] += adjustedCount;
 
             // Track faculty data per RAW area
-            if (!(name in cache.facultyAreaData[rawArea])) {
-                cache.facultyAreaData[rawArea][name] = { count: 0, adjustedCount: 0 };
+            if (!(authorKey in cache.facultyAreaData[rawArea])) {
+                cache.facultyAreaData[rawArea][authorKey] = { count: 0, adjustedCount: 0 };
             }
-            cache.facultyAreaData[rawArea][name].count += parseInt(auth.count);
-            cache.facultyAreaData[rawArea][name].adjustedCount += adjustedCount;
+            cache.facultyAreaData[rawArea][authorKey].count += parseInt(auth.count);
+            cache.facultyAreaData[rawArea][authorKey].adjustedCount += adjustedCount;
 
             // Track all faculty and their departments
-            if (!(name in cache.allFaculty)) {
-                cache.allFaculty[name] = { dept: dept };
+            if (!(authorKey in cache.allFaculty)) {
+                cache.allFaculty[authorKey] = { dept: dept };
             }
 
             // Build deptNames and deptCounts (first time we see each faculty member)
-            if (!(name in visitedForDept)) {
-                visitedForDept[name] = true;
+            if (!(authorKey in visitedForDept)) {
+                visitedForDept[authorKey] = true;
                 if (!(dept in cache.deptNames)) {
                     cache.deptNames[dept] = [];
                     cache.deptCounts[dept] = 0;
                 }
-                cache.deptNames[dept].push(name);
+                cache.deptNames[dept].push(authorKey);
                 cache.deptCounts[dept] += 1;
             }
         }
@@ -170,25 +171,25 @@ namespace CSRankings {
             const facultyArea = cache.facultyAreaData[rawArea];
             if (!facultyArea) continue;
 
-            for (const name in facultyArea) {
-                if (!(name in facultySeen)) {
-                    facultySeen[name] = true;
-                    facultycount[name] = 0;
-                    facultyAdjustedCount[name] = 0;
+            for (const authorKey in facultyArea) {
+                if (!(authorKey in facultySeen)) {
+                    facultySeen[authorKey] = true;
+                    facultycount[authorKey] = 0;
+                    facultyAdjustedCount[authorKey] = 0;
                 }
-                facultycount[name] += facultyArea[name].count;
-                facultyAdjustedCount[name] += facultyArea[name].adjustedCount;
+                facultycount[authorKey] += facultyArea[authorKey].count;
+                facultyAdjustedCount[authorKey] += facultyArea[authorKey].adjustedCount;
             }
         }
 
         // Build deptNames and deptCounts from faculty we found
-        for (const name in facultySeen) {
-            const dept = cache.allFaculty[name].dept;
+        for (const authorKey in facultySeen) {
+            const dept = cache.allFaculty[authorKey].dept;
             if (!(dept in deptNames)) {
                 deptNames[dept] = [];
                 deptCounts[dept] = 0;
             }
-            deptNames[dept].push(name);
+            deptNames[dept].push(authorKey);
             deptCounts[dept] += 1;
         }
     }
@@ -231,6 +232,7 @@ namespace CSRankings {
                 continue;
             }
             const name = auth.name;
+            const authorKey = `${name}@@${dept}`;
             // If this area is a child area, accumulate totals for parent.
             if (area in parentMap) {
                 area = parentMap[area];
@@ -243,19 +245,19 @@ namespace CSRankings {
             const adjustedCount: number = parseFloat(authors[r].adjustedcount);
             areaDeptAdjustedCount[areaDept] += adjustedCount;
             /* Is this the first time we have seen this person? */
-            if (!(name in visited)) {
-                visited[name] = true;
-                facultycount[name] = 0;
-                facultyAdjustedCount[name] = 0;
+            if (!(authorKey in visited)) {
+                visited[authorKey] = true;
+                facultycount[authorKey] = 0;
+                facultyAdjustedCount[authorKey] = 0;
                 if (!(dept in deptCounts)) {
                     deptCounts[dept] = 0;
                     deptNames[dept] = <Array<string>>[];
                 }
-                deptNames[dept].push(name);
+                deptNames[dept].push(authorKey);
                 deptCounts[dept] += 1;
             }
-            facultycount[name] += count;
-            facultyAdjustedCount[name] += adjustedCount;
+            facultycount[authorKey] += count;
+            facultyAdjustedCount[authorKey] += adjustedCount;
         }
     }
 
