@@ -4,7 +4,7 @@ Build a Zhejiang+Yale-only CSRankings dataset.
 
 This script:
 1. Keeps only faculty rows affiliated with Zhejiang University or Yale University.
-2. Ensures Yilun Zhao 0001 (Yale) exists in the dataset.
+2. Ensures Yilun Zhao 0001 (Zhejiang) exists in the dataset.
 3. Rewrites csrankings-*.csv shards, csrankings.csv, and split helper CSVs.
 4. Filters institutions.csv to only required institutions.
 5. Optionally trims dblp-aliases.csv to rows relevant to kept faculty.
@@ -24,7 +24,7 @@ TARGET_INSTITUTIONS = {"Zhejiang University", "Yale University"}
 
 YILUN_ENTRY = {
     "name": "Yilun Zhao 0001",
-    "affiliation": "Yale University",
+    "affiliation": "Zhejiang University",
     "homepage": "https://yilunzhao.com",
     "scholarid": "NOSCHOLARPAGE",
     "orcid": "0000-0000-0000-0000",
@@ -84,9 +84,13 @@ def filter_and_rebuild_subset(filter_aliases: bool) -> None:
     all_rows: List[Dict[str, str]] = []
     for row in source_rows:
         if row.get("affiliation", "") in TARGET_INSTITUTIONS:
-            # Keep only the explicitly selected Yilun identity.
-            if is_yilun_variant(row.get("name", "")) and row.get("name", "") != YILUN_ENTRY["name"]:
-                continue
+            # Keep only the explicitly selected Yilun identity, including affiliation.
+            if is_yilun_variant(row.get("name", "")):
+                if (
+                    row.get("name", "") != YILUN_ENTRY["name"]
+                    or row.get("affiliation", "") != YILUN_ENTRY["affiliation"]
+                ):
+                    continue
             all_rows.append(normalize_row(row, fieldnames))
 
     yilun_name = YILUN_ENTRY["name"]

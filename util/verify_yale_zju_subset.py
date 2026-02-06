@@ -16,6 +16,7 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 
 TARGET_INSTITUTIONS = {"Zhejiang University", "Yale University"}
 YILUN_NAME = "Yilun Zhao 0001"
+YILUN_AFFILIATION = "Zhejiang University"
 DISPLAY_START_YEAR = 2022
 DISPLAY_END_YEAR = 2026
 
@@ -64,7 +65,9 @@ def main() -> None:
     )
     if disallowed_yilun:
         fail(f"Found disallowed Yilun entries in csrankings.csv: {disallowed_yilun}")
-    if not any(r.get("name") == YILUN_NAME and r.get("affiliation") == "Yale University" for r in cs_rows):
+    if not any(
+        r.get("name") == YILUN_NAME and r.get("affiliation") == YILUN_AFFILIATION for r in cs_rows
+    ):
         fail(f"{YILUN_NAME} missing from csrankings.csv")
 
     _, inst_rows = read_csv(Path("institutions.csv"))

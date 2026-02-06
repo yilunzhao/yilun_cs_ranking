@@ -17,7 +17,7 @@ from typing import Dict, List, Tuple
 
 TARGET_INSTITUTIONS = {"Yale University", "Zhejiang University"}
 YILUN_NAME = "Yilun Zhao 0001"
-YILUN_DEPT = "Yale University"
+YILUN_DEPT = "Zhejiang University"
 
 
 def is_yilun_variant(name: str) -> bool:
